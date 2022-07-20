@@ -1,7 +1,11 @@
+#First, we load the required libraries
+
 from cgitb import text
+from dataclasses import replace
 from msilib.schema import Class
-from operator import contains
+from operator import contains, countOf
 from os import getcwd, link
+from xml.dom.minidom import Element
 #import pwd
 #from re import U
 #from tkinter import Button
@@ -14,6 +18,12 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException
+
+import requests
+import urllib.request
+import time
+from bs4 import BeautifulSoup
+import shutil
 
 
 #-----------------------------------------------------------#
@@ -76,20 +86,62 @@ browser.get("https://ca.indeed.com/jobs?q=data%20analyst&l=Quebec%20Province")
 time.sleep(3)   #this command force the programm to wait 3 seconds so to make sure the hole page has been loaded 
                 #before executing the next commands
 
-#next lines allow to navigates through all the pages containing job offer annouce
+#this function return the end of url for each page
+def end_url(x):
+    if x > 1:
+        a = x - 1
+        end = 'start=' + f'{a}0'
+    else:
+        end = ""       #first page has no ending
+    return end
+
+# function to extract html document from given url
+def getHTML(url):
+    # request for HTML document of given url
+    response = requests.get(url)
+    # response will be provided in JSON format
+    return response.text
+
+#next lines allow to navigates through all the pages containing job announcement
 i = 0
-page = 2
+page = 1
+main_url = 'https://ca.indeed.com/jobs?q=data%20analyst&l=Quebec%20Province'
+
+
+
 while i == 0:
+    #report data from web pages to table
+    
+    main_soup = BeautifulSoup(getHTML(main_url), "html.parser")
+    
+    #these command lines may be used to get the total number of job href on a specific page
+    #num = 0
+    #for each in main_soup.find_all('a', attrs={'class':'jcs-JobTitle css-jspxzf eu4oa1w0'}):
+    #    num = num + 1
+    #num
+
+    for each in main_soup.find_all('a', attrs={'class':'jcs-JobTitle css-jspxzf eu4oa1w0'}):
+        sub_url = 'https://ca.indeed.com' + each['href']
+        sub_soup = BeautifulSoup(getHTML(sub_url), "html.parser")
+        #all commands to report data from web pages to table will be there
+
+
+
+
+    link = main_soup.find_all('a', attrs={'class':'jcs-JobTitle css-jspxzf eu4oa1w0'})[0]['href']
+    sub_url = 'https://ca.indeed.com' + link
+
+    
+    
     try:
+        page = page + 1
         browser.find_element(By.XPATH, test(page)).click()     #change to next page
         time.sleep(2)
         if page == 2:
             browser.find_element(By.XPATH, '//*[@id="popover-x"]/button').click()       #close popup window
         browser.execute_script("window.scrollTo(0,5000)")
-        page = page + 1
     except NoSuchElementException:
         i = 1
-
 
 
 
@@ -103,3 +155,6 @@ while i < 14:
 
 
 
+    browser.find_elements(By.CLASS_NAME, 'jobTitle jobTitle-newJob css-bdjp2m eu4oa1w0')        #find all new jobs
+    browser.find_elements(By.CLASS_NAME, 'jobTitle css-1h4a4n5 eu4oa1w0')          #find all old jobs
+    browser.find_elements(By.CLASS_NAME, 'jcs-JobTitle css-jspxzf eu4oa1w0')        #find all job titles
