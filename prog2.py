@@ -2,44 +2,106 @@
 #---Programm command lines for web scraping on Indeed----#
 #--------------------------------------------------------#
 
+#First, we load the required libraries
+
+from ast import Lambda
+from cgitb import text
+from dataclasses import replace
+from gettext import gettext
+from msilib.schema import Class
+from operator import contains, countOf
+from os import getcwd, link
+from pickle import TRUE
+from typing import Mapping
+from unittest import result
+from xml.dom.minidom import Element
+from attr import attr, attrs
+from pyparsing import line
+
+from selenium import webdriver
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.chrome.service import Service
+import time
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import NoSuchElementException
+
+import requests
+import urllib.request
+import time
+from bs4 import BeautifulSoup
+import shutil
+
+import pandas as pd
+
+from lxml import etree
+
+from tkinter import *
+
+
+#now we define useful functions
+
+#this function will return the path to a specific page on indeed
+def test(n):
+    next_path = f'//a[@aria-label="{n}"]'   #path structure is obtained through the website html inspection
+    return next_path
+
+#this function return the end of url for each page
+def end_url(x):
+    if x > 1:
+        a = x - 1
+        end = '&start=' + f'{a}0'
+    else:
+        end = ""       #first page has no ending
+    return end
+
+# function to extract html document from given url
+def getHTML(url):
+    # request for HTML document of given url
+    response = requests.get(url, headers={"Content-Type":"text"})
+    # response will be provided in JSON format
+    return response.text
+
+# this function estimates the time necessary for downloading data
+def delay(nb):
+    if nb/20 < 1:
+        delay = f'{int(nb/20)*60} sec'
+    elif nb/20 >= 1 and nb/20 < 60:
+        delay = f'{int(nb/20)} mns'
+    else: delay = f'{int(nb/20/60)} hrs {int(((nb/20/60)-int(nb/20/60))*60)} mns'
+    return delay
+
+#this function inform on the occurence of a specific string in the job description section
+def skill_test(x):
+    result = 'check website'
+    try:
+        string = sub_soup.find('div', attrs={'id':'jobDescriptionText'}).text
+        result_list = []
+        for each in x:        
+            result_list.append(each in string)  # append True/False for each element in substring
+        r = any(result_list) #call any() with boolean results list
+        if r == True:
+            result = 'yes'
+        else:
+            result = 'no'
+    except: pass
+    return result
+
+#these functions are to delete text in boxes shown on the tkinter window 
+def clear_name(x):
+    input_name.delete(0, "end")
+
+def clear_place(x):
+    input_place.delete(0, "end")
+
+
 def search_jobs():
-
-    #First, we load the required libraries
-
-    from cgitb import text
-    from dataclasses import replace
-    from gettext import gettext
-    from msilib.schema import Class
-    from operator import contains, countOf
-    from os import getcwd, link
-    from pickle import TRUE
-    from typing import Mapping
-    from unittest import result
-    from xml.dom.minidom import Element
-    from attr import attr, attrs
-    from pyparsing import line
-
-    from selenium import webdriver
-    from webdriver_manager.chrome import ChromeDriverManager
-    from selenium.webdriver.chrome.service import Service
-    import time
-    from selenium.webdriver.common.by import By
-    from selenium.webdriver.support.ui import WebDriverWait
-    from selenium.webdriver.support import expected_conditions as EC
-    from selenium.common.exceptions import NoSuchElementException
-
-    import requests
-    import urllib.request
-    import time
-    from bs4 import BeautifulSoup
-    import shutil
-
-    import pandas as pd
-
-    from lxml import etree
 
     search_name = input_name.get()   #save the job title the user wants to search for
     search_place = input_place.get()        #save the job location the user wants to search for
+    #search_name = 'économiste'   #save the job title the user wants to search for
+    #search_place = 'ville de québec, QC'        #save the job location the user wants to search for
 
     #here we load the browser and the indeed website
     browser=webdriver.Chrome(service=Service(ChromeDriverManager().install()))
@@ -61,62 +123,44 @@ def search_jobs():
     browser.find_element(By.ID, 'text-input-where').send_keys(search_place)     #paste the job location to the box
     browser.find_element(By.XPATH, '//button[@class="yosegi-InlineWhatWhere-primaryButton"]').click()   #search for the results
     time.sleep(1)
-
-
-    #now we define useful functions
-
-    #this function will return the path to a specific page on indeed
-    def test(n):
-        next_path = f'//a[@aria-label="{n}"]'   #path structure is obtained through the website html inspection
-        return next_path
-
-    #this function return the end of url for each page
-    def end_url(x):
-        if x > 1:
-            a = x - 1
-            end = '&start=' + f'{a}0'
-        else:
-            end = ""       #first page has no ending
-        return end
-
-    # function to extract html document from given url
-    def getHTML(url):
-        # request for HTML document of given url
-        response = requests.get(url, headers={"Content-Type":"text"})
-        # response will be provided in JSON format
-        return response.text
-
-    # this function estimates the time necessary for downloading data
-    def delay(nb):
-        if nb/20 < 1:
-            delay = f'{int(nb/20)*60} sec'
-        elif nb/20 >= 1 and nb/20 < 60:
-            delay = f'{int(nb/20)} mns'
-        else: delay = f'{int(nb/20/60)} hrs {int(((nb/20/60)-int(nb/20/60))*60)} mns'
-        return delay
-
-    #this function inform on the occurence of a specific string in the job description section
-    def skill_test(x):
-        result = 'check website'
-        try:
-            string = sub_soup.find('div', attrs={'id':'jobDescriptionText'}).text
-            result_list = []
-            for each in x:        
-                result_list.append(each in string)  # append True/False for each element in substring
-            r = any(result_list) #call any() with boolean results list
-            if r == True:
-                result = 'yes'
-            else:
-                result = 'no'
-        except: pass
-        return result
+ 
 
     #estimate the time for dowloading data
     nb = int(browser.find_element(By.ID, 'searchCountPages').text.split()[3])
-    print(f'Data on {nb} jobs will be downloaded. Estimated time is {delay(nb)}.')
+    preview = f'Data on {nb} jobs will be downloaded. Estimated time is {delay(nb)}.'
+
+    return preview
 
     #next lines allow to navigates through all the pages containing job announcement
 
+def report_jobs():
+
+    search_name = input_name.get()   #save the job title the user wants to search for
+    search_place = input_place.get()        #save the job location the user wants to search for
+    #search_name = 'économiste'   #save the job title the user wants to search for
+    #search_place = 'ville de québec, QC'        #save the job location the user wants to search for
+
+    #here we load the browser and the indeed website
+    browser=webdriver.Chrome(service=Service(ChromeDriverManager().install()))
+    browser.minimize_window()
+    browser.get("https://ca.indeed.com/")
+    time.sleep(2)   #this command force the programm to wait 2 seconds to make sure the hole page has been loaded 
+                    #before executing the next commands
+
+    #clear the search boxes (job title and location) on the web page
+    browser.find_element(By.ID, 'text-input-what').click()
+    try: browser.find_element(By.XPATH, '//input[@ID="text-input-what"]/following::span').click()
+    except: pass
+    browser.find_element(By.ID, 'text-input-where').click()
+    try: browser.find_element(By.XPATH, '//input[@ID="text-input-where"]/following::span').click()
+    except: pass
+
+    #search according to the user preferences of job and location
+    browser.find_element(By.ID, 'text-input-what').send_keys(search_name)      #paste the job title to the box
+    browser.find_element(By.ID, 'text-input-where').send_keys(search_place)     #paste the job location to the box
+    browser.find_element(By.XPATH, '//button[@class="yosegi-InlineWhatWhere-primaryButton"]').click()   #search for the results
+    time.sleep(1)    
+    
     i = 0
     main_url = browser.current_url
     jobtab = pd.DataFrame(columns=['TITLE', 'COMPANY', 'LOCATION', 'T_WORK', 'T_CONTRACT', 'SALARY', 'EXCEL', 'PYTHON', 'R', 'SAS', 'STATA', 'VBA', 'SQL', 'POWER_BI', 'WEBSITE'])
@@ -194,29 +238,17 @@ def search_jobs():
 
     browser.close()
 
-    jobtab.to_csv('results/jobs.csv', index=False, encoding='UTF-8', sep=';')       #save the database to csv file
+    jobtab.to_csv('draft/jobs.csv', index=False, encoding='UTF-8', sep=';')       #save the database to csv file
+
 
 # Now we will build an interface for interacting with the program
-from msilib.schema import Font
-from tkinter import *
-import tkinter
-
-from numpy import size   #we will use tkinter library
-
-def clear_name(x):
-    input_name.delete(0, "end")
-
-def clear_place(x):
-    input_place.delete(0, "end")
-
-# Define the properties of the window
-
-root = Tk()
-root.title("jobsearch")
-root.geometry("720x350+400+230")    
-root.resizable(0,0)
 
 # creating the widgets
+root = Tk()
+root.title("jobsearch")
+root.geometry("720x350+400+230")    # Define the geometry of the window
+#root.attributes('-fullscreen', TRUE)
+root.resizable(0,0)
 
 label1 = Label(root, text="Welcome to my jobsearch program!", font=('Times', 20))
 label2 = Label(root, text="This program looks for the jobs which match your specific criteria on Indeed. \n You will be able to save the results in Excel.", font=('Times', 13))
@@ -233,8 +265,16 @@ blank = Label(root, text="<------------------->")
 blank2 = Label(root, text="")
 blank3= Label(root, text="")
 blank4= Label(root, text="")
+note = Label(root, text=Lambda: search_jobs())
 
 # shoving the widgets on the screen
+#label1.grid(row=0, column=0, columnspan=2)
+#label2.grid(row=1, column=0, columnspan=2)
+#label3.grid(row=2, column=0)
+#input_name.grid(row=2, column=1)
+#label4.grid(row=3, column=0)
+#input_place.grid(row=3, column=1)
+#search_b.grid(row=4, column=0, columnspan=2)
 
 label1.pack(fill=BOTH, expand=TRUE)
 label2.pack(fill=BOTH, expand=TRUE)
