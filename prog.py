@@ -2,41 +2,50 @@
 #---Programm command lines for web scraping on Indeed----#
 #--------------------------------------------------------#
 
+#First, we load the required libraries
+
+from cgitb import text
+from dataclasses import replace
+from gettext import gettext
+from msilib.schema import Class
+from operator import contains, countOf
+from os import getcwd, link, stat
+from pickle import TRUE
+from typing import Mapping
+from unittest import result
+from xml.dom.minidom import Element
+from attr import attr, attrs
+from pyparsing import line
+
+from selenium import webdriver
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.chrome.service import Service
+import time
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import NoSuchElementException
+
+import requests
+import urllib.request
+import time
+from bs4 import BeautifulSoup
+import shutil
+
+import pandas as pd
+
+from lxml import etree
+
+from tkinter import *
+from tkinter import filedialog
+
 def search_jobs():
 
-    #First, we load the required libraries
+    input_name.config(state='disabled')
+    input_place.config(state='disabled')
+    search_b.config(state='disabled')
 
-    from cgitb import text
-    from dataclasses import replace
-    from gettext import gettext
-    from msilib.schema import Class
-    from operator import contains, countOf
-    from os import getcwd, link
-    from pickle import TRUE
-    from typing import Mapping
-    from unittest import result
-    from xml.dom.minidom import Element
-    from attr import attr, attrs
-    from pyparsing import line
-
-    from selenium import webdriver
-    from webdriver_manager.chrome import ChromeDriverManager
-    from selenium.webdriver.chrome.service import Service
-    import time
-    from selenium.webdriver.common.by import By
-    from selenium.webdriver.support.ui import WebDriverWait
-    from selenium.webdriver.support import expected_conditions as EC
-    from selenium.common.exceptions import NoSuchElementException
-
-    import requests
-    import urllib.request
-    import time
-    from bs4 import BeautifulSoup
-    import shutil
-
-    import pandas as pd
-
-    from lxml import etree
+    file_path = filedialog.askdirectory()
 
     search_name = input_name.get()   #save the job title the user wants to search for
     search_place = input_place.get()        #save the job location the user wants to search for
@@ -124,13 +133,14 @@ def search_jobs():
     while i == 0:
 
         main_soup = BeautifulSoup(getHTML(main_url), "html.parser")
-        
+        time.sleep(2)
+
         for each in main_soup.find_all('a', attrs={'class':'jcs-JobTitle css-jspxzf eu4oa1w0'}):
             sub_url = 'https://ca.indeed.com' + each['href']
             sub_soup = BeautifulSoup(getHTML(sub_url), "html.parser")
-            time.sleep(1)
+            time.sleep(2)
             dom = etree.HTML(str(sub_soup))
-            time.sleep(1)
+            time.sleep(2)
             
             #Commands to report data from web pages to database
             title = ''
@@ -182,6 +192,7 @@ def search_jobs():
         try:
             main_url = browser.find_element(By.XPATH, '//head/link[@rel="next"]').get_attribute('href')
             browser.get(main_url)
+            time.sleep(2)
         except NoSuchElementException:
             i = 1
 
@@ -194,14 +205,14 @@ def search_jobs():
 
     browser.close()
 
-    jobtab.to_csv('results/jobs.csv', index=False, encoding='UTF-8', sep=';')       #save the database to csv file
+    jobtab.to_csv(file_path + '/jobs.csv', index=False, encoding='UTF-8', sep=';')       #save the database to csv file
+
+    input_name.config(state='normal')
+    input_place.config(state='normal')
+    search_b.config(state='normal')
+
 
 # Now we will build an interface for interacting with the program
-from msilib.schema import Font
-from tkinter import *
-import tkinter
-
-from numpy import size   #we will use tkinter library
 
 def clear_name(x):
     input_name.delete(0, "end")
